@@ -8,25 +8,28 @@ const AWS = require('aws-sdk');
 
 //Logs the request information to Dynamo DB
 function logNewReq(unique_id, request_info) {
-
     let client_id = request_info.user_id;
 
-    console.log("logging new request ", {request_id, request_id}, typeof request_info);
+    console.log(
+        'logging new request ',
+        { request_id, request_id },
+        typeof request_info,
+    );
 
     const dbParams = {
         TableName: 'gateway_requests',
         Item: {
             client_id,
             unique_id,
-            'name': request_info.name,
-            'status': 'enqueued',
-            'created_at': (new Date()).toString(),
-            'updated_at': (new Date()).toString(),
-            'location': request_info.location,
-            'target': request_info.target,
-            'recipient_email': request_ifno.email,
-            'set_live': request_info.set_live
-        }
+            name: request_info.name,
+            status: 'enqueued',
+            created_at: new Date().toString(),
+            updated_at: new Date().toString(),
+            location: request_info.location,
+            target: request_info.target,
+            recipient_email: request_ifno.email,
+            set_live: request_info.set_live,
+        },
     };
 
     const docClient = new AWS.DynamoDB.DocumentClient();
@@ -45,7 +48,9 @@ exports.handler = async (event, context) => {
     const SQS = new AWS.SQS();
 
     let queue1_name = 'register-request-queue.fifo';
-    const queue1_url = (await SQS.getQueueUrl({ QueueName: queue1_name }).promise()).QueueUrl;
+    const queue1_url = (
+        await SQS.getQueueUrl({ QueueName: queue1_name }).promise()
+    ).QueueUrl;
 
     const enqueue_params = {
         QueueUrl: queue1_url,
@@ -58,15 +63,14 @@ exports.handler = async (event, context) => {
     // before we send the message, lets create a new record in dynamo db
     // with everything that we need from the request
     let event_body = event.body;
-    if (typeof event_body === 'string') { event_body = JSON.parse(event_body); }
+    if (typeof event_body === 'string') {
+        event_body = JSON.parse(event_body);
+    }
 
     try {
         await logNewRequest(unique_id, event_body);
     } catch (error) {
-        console.error(
-            'ERROR LOGGING NEW REQUEST TO DYNAMO DB',
-            error
-        );
+        console.error('ERROR LOGGING NEW REQUEST TO DYNAMO DB', error);
 
         return {
             statusCode: 500,
@@ -85,7 +89,7 @@ exports.handler = async (event, context) => {
     const enqueue_results = await SQS.sendMessage(enqueue_params).promise();
 
     if (!enqueue_results) {
-        console.error("Error adding request to queue");
+        console.error('Error adding request to queue');
 
         return {
             statusCode: 500,
@@ -94,7 +98,9 @@ exports.handler = async (event, context) => {
     }
 
     let queue2_name = 'notify-request-queue.fifo';
-    const queue2_url = (await SQS.getQueueUrl({ QueueName: queue2_name }).promise()).QueueUrl
+    const queue2_url = (
+        await SQS.getQueueUrl({ QueueName: queue2_name }).promise()
+    ).QueueUrl;
 
     const enqueue_params = {
         QueueUrl: queue2_url,
@@ -107,7 +113,7 @@ exports.handler = async (event, context) => {
     const enqueue2_results = await SQS.sendMessage(enqueue_params).promise();
 
     if (!enqueue2_results) {
-        console.error("Error adding request to queue");
+        console.error('Error adding request to queue');
 
         return {
             statusCode: 500,
